@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func WaitFor(name string, condition func() (bool, error), conditionCheckInterval time.Duration, conditionTimeoutInterval time.Duration) error {
+func WaitUntil(name string, condition func() (bool, error), conditionCheckInterval time.Duration, conditionTimeoutInterval time.Duration) (ok bool, err error) {
 	failure := make(chan error)
 	done := make(chan bool)
 	timeout := time.After(conditionTimeoutInterval)
@@ -30,13 +30,14 @@ func WaitFor(name string, condition func() (bool, error), conditionCheckInterval
 	}()
 	select {
 	case <-done:
-		break
-	case err <- failure:
+		ok = true
+	case err = <-failure:
 		close(done)
-		return err
+		ok = false
 	case <-timeout:
 		close(done)
-		return fmt.Errorf("Condition %s timed out after %v", name, conditionTimeoutInterval)
+		err = fmt.Errorf("Condition '%s' check timed out after %v", name, conditionTimeoutInterval)
+		ok = false
 	}
-	return nil
+	return
 }
